@@ -1,0 +1,36 @@
+
+services:
+  db:
+    image: postgres:16
+    container_name: app_postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+
+  qa_api_project:
+    build: .
+    image: app_django:latest
+    container_name: app_django
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+    command: >
+      bash -c "./manage.py migrate && gunicorn -b 0.0.0.0:8000 questions_answers_api.wsgi:application"
+
+  nginx:
+    build:
+      dockerfile: ./Dockerfile
+      context: ./docker/nginx
+    container_name: app_nginx
+    image: app_nginx
+    depends_on:
+      - qa_api_project
+    ports:
+      - "${NGINX_EXTERNAL_PORT}:80"
+
+volumes:
+  postgres_data:  
